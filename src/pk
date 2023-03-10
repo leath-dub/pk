@@ -38,7 +38,7 @@ gh_api_key="$GH_API_KEY"
 gh_filter_downloads='.assets[].browser_download_url'
 tag="tags/nightly" # no tagname
 # dest="$HOME/bin"
-: ${dest:="/tmp"}
+: ${pkgdest:="/tmp"}
 : ${pkgpath:="./pkgs/"}
 
 print_env() {
@@ -137,6 +137,7 @@ pk_show() {
         do
             . "./pkgs/$pkgname.sh"
             show_releases
+            echo "default: $default_uri"
         done
         :
     } || { # more than 1 source
@@ -156,7 +157,7 @@ echo
 while [ -n "$1" ]
 do
     case "$1" in
-        dest) shift 1; dest="$1"; shift 1 ;;
+        dest) shift 1; pkgdest="$1"; shift 1 ;;
         pkgpath) shift 1; pkgpath="$1"; shift 1 ;;
         tag) shift 1; tag="tags/$1"; shift 1 ;;
         show) shift 1; pk_show $1; shift 1 ;;

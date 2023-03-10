@@ -28,5 +28,5 @@ fetch() {
 
 installer() {
     uri="$@"
-    extract $uri | tar xvf - -C $dest
+    extract $uri | tar xvf - -C $pkgdest
 }
