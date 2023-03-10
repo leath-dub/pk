@@ -67,6 +67,18 @@ list_length() (
     echo $length
 )
 
+get_sources() (
+    pkgname=$1
+    IFS=":"
+    sources=""
+    for path in $pkgpath
+    do
+        file="${path}/${pkgname}.sh"
+        [ -f "$file" ] && sources="$sources $file"
+    done
+    echo $sources
+)
+
 pk_add() {
     pkgname=$1
 
@@ -109,8 +121,34 @@ pk_add() {
         echo "* try specifying one path for pkgpath"
         echo "i.e. \`pk pkgpath <./preferred_source> add <pkgname>\`"
     }
+}
 
-    # installer `fetch`
+pk_show() {
+    pkgname=$1
+    sources=`get_sources $pkgname`
+    number_of_sources=`list_length $sources`
+    [ "$number_of_sources" = "0" ] && {
+        echo "no sources found for package $pkgname"
+        exit 1
+    }
+
+    [ "$number_of_sources" = "1" ] && {
+        for src in "$sources"
+        do
+            . "./pkgs/$pkgname.sh"
+            show_releases
+        done
+        :
+    } || { # more than 1 source
+        echo "failed: there are multiple sources: "
+        for path in $sources
+        do
+            echo " - $path"
+        done
+        echo
+        echo "* try specifying one path for pkgpath"
+        echo "i.e. \`pk pkgpath <./preferred_source> add <pkgname>\`"
+    }
 }
 
 [ -z "$1" ] && echo "usage: pk <command> [args] <command> [args] ..." && exit 1
@@ -121,10 +159,31 @@ do
         dest) shift 1; dest="$1"; shift 1 ;;
         pkgpath) shift 1; pkgpath="$1"; shift 1 ;;
         tag) shift 1; tag="tags/$1"; shift 1 ;;
+        show) shift 1; pk_show $1; shift 1 ;;
+        uri) shift 1; uri=$1; shift 1 ;;
         add) {
             shift 1
             pk_add $1
             shift 1
+        } ;;
+        help) {
+            echo "usage: pk <command> [args] <command> [args] ..."
+            echo "commands:"
+            echo " - dest <install directory>: where to install packages"
+            echo " - pkgpath <source directories>: like \$PATH environment"
+            echo "   variable directories separated like so"
+            echo "   \"dir1:dir2: ... :dirN\""
+            echo "   * specifies where package scripts are to be looked for"
+            echo " - tag <tag name>: specifies github release tag"
+            echo "   e.g. nightly"
+            echo " - show <package name>: list download links (uri) of package"
+            echo " - uri <file name>: specifies what file to install"
+            echo " - add <package name>: specifies package name to add"
+            echo
+            echo "** note that commands are executed as they are read, this"
+            echo "   means that you should for the most part specify add"
+            echo "   command last"
+            exit 1
         } ;;
         *) shift 1 ;;
     esac
