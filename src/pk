@@ -1,0 +1,140 @@
+#!/bin/sh
+
+http_get() {
+    [ -z "$default_headers" ] && curl -# $@ || curl -H "$default_headers" -# $@
+}
+
+http_get_download() {
+    http_get -L $@
+}
+
+gh_api_url() {
+    echo "https://api.github.com/repos/$1/releases"
+}
+
+json_raw() {
+    jq -rcM $@
+}
+
+temp_file() {
+    mktemp /tmp/XXXXXX-pk.$1
+}
+
+extract() {
+    # ref https://github.com/kisslinux/kiss/blob/master/kiss
+    case $1 in
+        *.tbz|*.bz2) bzip2 -d ;;
+        *.lzma)      lzma -dc ;;
+        *.lz)        lzip -dc ;;
+        *.tar)       cat      ;;
+        *.tgz|*.gz)  gzip -d  ;;
+        *.xz|*.txz)  xz -dc   ;;
+        *.zst)       zstd -dc ;;
+    esac < "$1"
+}
+
+gh_api_key="$GH_API_KEY"
+[ -n "$gh_api_key" ] && default_headers="Authorization: token $GH_API_KEY"
+gh_filter_downloads='.assets[].browser_download_url'
+tag="tags/nightly" # no tagname
+# dest="$HOME/bin"
+: ${dest:="/tmp"}
+: ${pkgpath:="./pkgs/"}
+
+print_env() {
+    echo "destination: $dest"
+    echo "package sources:"
+    (
+        IFS=":"
+        for path in $pkgpath
+        do
+            echo " - $path"
+        done
+    )
+    echo "tag: $tag"
+}
+
+add_to_pkgpath() {
+    [ -n "$1" ] && pkgpath="${pkgpath}:$1"
+}
+
+list_length() (
+    length=0
+    for item in "$@"
+    do
+        length=$((length + 1))
+    done
+    echo $length
+)
+
+pk_add() {
+    pkgname=$1
+
+    [ -z "$pkgname" ] && {
+        echo "usage: add <pkgname>"
+        exit 1
+    }
+
+    sources=$(
+        IFS=":"
+        sources=""
+        for path in $pkgpath
+        do
+            file="${path}/${pkgname}.sh"
+            [ -f "$file" ] && sources="$sources $file"
+        done
+        echo $sources
+    )
+    # . ./pkgs/$pkgname.sh
+    number_of_sources=`list_length $sources`
+    [ "$number_of_sources" = "0" ] && {
+        echo "no sources found for package $pkgname"
+        exit 1
+    }
+
+    [ "$number_of_sources" = "1" ] && {
+        for src in "$sources"
+        do
+            . "./pkgs/$pkgname.sh"
+            installer `fetch`
+        done
+        :
+    } || { # more than 1 source
+        echo "failed: there are multiple sources: "
+        for path in $sources
+        do
+            echo " - $path"
+        done
+        echo
+        echo "* try specifying one path for pkgpath"
+        echo "i.e. \`pk pkgpath <./preferred_source> add <pkgname>\`"
+    }
+
+    # installer `fetch`
+}
+
+[ -z "$1" ] && echo "usage: pk <command> [args] <command> [args] ..." && exit 1
+echo
+while [ -n "$1" ]
+do
+    case "$1" in
+        dest) shift 1; dest="$1"; shift 1 ;;
+        pkgpath) shift 1; pkgpath="$1"; shift 1 ;;
+        tag) shift 1; tag="tags/$1"; shift 1 ;;
+        add) {
+            shift 1
+            pk_add $1
+            shift 1
+        } ;;
+        *) shift 1 ;;
+    esac
+done
+# print_env
+
+# for pkg in `find ./pkgs -type f -name *.sh`
+# do
+#     echo "fetching: $pkg"
+#     . $pkg # source pkg
+#     show_releases
+#     installer `fetch`
+# done
