@@ -16,6 +16,10 @@ json_raw() {
     jq -rcM $@
 }
 
+json_print() {
+    printf "%s" $1
+}
+
 temp_file() {
     mktemp /tmp/XXXXXX-pk.$1
 }
@@ -107,7 +111,7 @@ pk_add() {
     [ "$number_of_sources" = "1" ] && {
         for src in "$sources"
         do
-            . "./pkgs/$pkgname.sh"
+            . $src
             installer `fetch`
         done
         :
@@ -135,7 +139,7 @@ pk_show() {
     [ "$number_of_sources" = "1" ] && {
         for src in "$sources"
         do
-            . "./pkgs/$pkgname.sh"
+            . $src
             show_releases
             echo "default: $default_uri"
         done
