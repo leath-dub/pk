@@ -40,7 +40,6 @@ extract() {
 gh_api_key="$GH_API_KEY"
 [ -n "$gh_api_key" ] && default_headers="Authorization: token $GH_API_KEY"
 gh_filter_downloads='.assets[].browser_download_url'
-tag="tags/nightly" # no tagname
 # dest="$HOME/bin"
 : ${pkgdest:="/tmp"}
 : ${pkgpath:="./pkgs/"}
